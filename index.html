@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<style>
+
+body {
+  margin: 0;
+}
+
+caption {
+  fill: #000;
+  text-anchor: start;
+  font-weight: bold;
+}
+
+path {
+  fill: none;
+  stroke: #000;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.major_road { stroke: #776; }
+.minor_road { stroke: #ccb; }
+.highway { stroke: #f39; stroke-width: 1.5px; }
+.rail { stroke: #7de; }
+
+.density-rect {
+  opacity: 0.7;
+}
+
+.day {
+  stroke: #ccc;
+}
+
+.year-title {
+  font-size: 1.5em;
+}
+
+</style>
+<body>
+  <script src="https://d3js.org/d3.v4.min.js"></script>
+  <script src="https://d3js.org/d3-scale-chromatic.v1.min.js"></script>
+  <script src="https://d3js.org/d3-tile.v0.0.min.js"></script>
+  <script src="https://d3js.org/topojson.v2.min.js"></script>
+  <script>
+  var tau = 2 * Math.PI;
+
+  var width = 1120,
+      height = 760;
+      center = [116.3904, 39.9156];
+
+  var tiles = d3.tile()
+                .size([width, height]);
+
+  var projection = d3.geoMercator()
+                      .center(center)
+                      .scale(400000 / tau)
+                      .translate([width/2, height/2]);
+
+  var path = d3.geoPath()
+                .projection(projection);
+
+  var svg = d3.select("body").append("svg")
+              .attr("width", width)
+              .attr("height", height)
+
+  var first_load = true;
+
+  //道路类型图例
+  var road_types = ['major_road', 'minor_road', 'highway', 'rail'];
+  var legend_roads = d3.select("body")
+                        .append("svg")
+                        .attr("width", 200)
+                        .attr("height", 150)
+                        .style('left', '1150px')
+                        .style('top', '20px')
+                        .style('position', 'absolute')
+                        .append("g");
+
+  legend_roads.selectAll('line')
+              .data(road_types)
+              .enter().append('line')
+              .attr('class', function(d) { return d; })
+              .attr('x1', 0)
+              .attr('y1', function(d, i) { return i*20 + 40; })
+              .attr('x2', 50)
+              .attr('y2', function(d, i) { return i*20 + 40; });
+
+  legend_roads.selectAll('text')
+              .data(road_types)
+              .enter().append('text')
+              .attr('x', 70)
+              .attr('y', function(d, i) { return i*20 + 45; })
+              .text(function(d) { return d; });
+
+  legend_roads.append("text")
+              .attr("class", "caption")
+              .attr("x", 0)
+              .attr("y", 20)
+              .text("道路类型");
+
+  //垃圾短信分布密度
+  var color = d3.scaleThreshold()
+                .domain([1, 5, 25, 100, 250, 500, 1000, 2000])
+                .range(d3.schemeOrRd[9]);
+
+  //每日垃圾短信严重程度
+  var severity_of_spam_color = d3.scaleThreshold()
+                                  .domain([20000,40000,60000])
+                                  .range(d3.schemeReds[4]);
+
+  //本日垃圾短信数目日历视图
+  var cellSize = 25;
+
+  var severity_of_spam_color = d3.scaleThreshold()
+                                  .domain([20000,40000,60000])
+                                  .range(d3.schemeReds[4]);
+
+  var calender_panel = d3.select("body")
+                      .append("svg")
+                      .attr("width", 200)
+                      .attr("height", 680)
+                      .style('left', '1150px')
+                      .style('top', '160px')
+                      .style('position', 'absolute');
+
+  var month_group = calender_panel.selectAll("g")
+                              .data(d3.range(1,4))
+                              .enter().append("g")
+                              .attr("transform", function(d, i) { return "translate(20," + (i*180 + 70) + ")"; });
+
+  var year = d3.timeFormat("%Y"),
+      month = d3.timeFormat("%m"),
+      week = d3.timeFormat("%U");
+  var days = month_group.selectAll(".day")
+                        .data(function(d) { return d3.timeDays(new Date(2017, d, 1), new Date(2017, d+1, 1)); })
+                        .enter().append("rect")
+                        .attr("class", "day")
+                        .attr("fill", "#fff")
+                        .attr("width", cellSize)
+                        .attr("height", cellSize)
+                        .attr("x", function(d) { return d3.timeFormat("%w")(d) * cellSize; })
+                        .attr("y", function(d) {
+                          return (week(d) - week(new Date(year(d), month(d)-1, 1))) * cellSize;
+                        })
+                        .datum(d3.timeFormat("%Y%m%d"));
+
+  var month_titles = month_group.selectAll('.month-title')
+                                .data(function(d) { return d3.timeMonths(new Date(2017, d, 1), new Date(2017, d+1, 1)); })
+                                .enter().append("text")
+                                .text(function(d) { return d.toLocaleString("zh-Hans", {month: "long"}); });
+
+  var year_title = calender_panel.append("text")
+                              .attr("class", "year-title")
+                              .attr("y", 30)
+                              .text("2017年");
+
+  var legend_sos = calender_panel.append("g")
+                                  .attr("transform", "translate(0, 600)")
+                                  .attr("width", 200)
+                                  .attr("height", 60);
+  var margin = 30;
+  legend_sos.selectAll("rect")
+            .data(severity_of_spam_color.range())
+            .enter().append("rect")
+            .attr("x", function(d,i) { return i*40 + 25; })
+            .attr("y", margin)
+            .attr("width", 40)
+            .attr("height", 10)
+            .attr("fill", function(d) { return d; });
+
+  legend_sos.selectAll("path")
+            .data(severity_of_spam_color.domain())
+            .enter().append("path")
+            .style("stroke", "black")
+            .attr("d", function(d,i) { return "M" + ((i+1)*40+25) + " " + margin + " V " + (margin+15); });
+
+  legend_sos.selectAll("text")
+            .data(severity_of_spam_color.domain())
+            .enter().append("text")
+            .attr("x", function(d,i) { return (i+1)*40+25; })
+            .attr("y", margin+25)
+            .style("font-size", "10px")
+            .style("text-anchor", "middle")
+            .text(function(d) { return d; });
+
+  legend_sos.append("text")
+            .attr("x", 20)
+            .attr("y", 15)
+            .attr("class", "caption")
+            .text("垃圾短信数量等级");
+
+  d3.csv("data/daily_spam_num.csv", function(err, csv) {
+    if(err) throw err;
+    var data = d3.nest()
+                  .key(function(d) { return d.date; })
+                  .rollup(function(d) { return +d[0].number; })
+                  .map(csv);
+    days.filter(function(d) { return ("$"+d) in data;})
+        .attr("fill", function(d) { return severity_of_spam_color(data[("$"+d)]); })
+        .on('click', clicked)
+        .append("title")
+        .text(function(d) { return d3.timeFormat("%m月%d日")(d3.timeParse("%Y%m%d")(d)) + "的垃圾短信条数为:" + data[("$"+d)].toLocaleString(); });
+
+    function clicked() {
+      update_date(d3.select(this).datum());
+    }
+  });
+
+  function update_date(date_str) {
+    d3.csv("data/" + date_str + "_density.csv", function(data) {
+      var regions_of_density = svg.selectAll("rect")
+                                  .data(data);
+
+      var entered_rect = regions_of_density.enter().append("rect")
+                          .attr("class", "density-rect")
+                          .attr("width", 11.1)
+                          .attr("height", 14.4);
+      entered_rect.append("title");
+      entered_rect.merge(regions_of_density)
+                  .attr("x", function(d) { return projection([d.lng, d.lat])[0]; })
+                  .attr("y", function(d) { return projection([d.lng, d.lat])[1]; })
+                  .attr("fill", function(d) { return color(d.count); })
+                  .select("title").text(function(d) { return d.count; });
+
+      regions_of_density.exit()
+                        .remove();
+
+
+      var spam_num = d3.sum(data.map(function(d) { return d.count; }));
+
+      if(first_load) {
+        first_load = false;
+
+        svg.selectAll("g")
+        .data(tiles
+          .scale(projection.scale() * tau)
+          .translate(projection([0,0]))())
+          .enter().append("g")
+          .each(function(d) {
+            var g = d3.select(this);
+            d3.json("https://vector.mapzen.com/osm/roads/" + d[2] + "/" + d[0] + "/" + d[1] + ".topojson?api_key=vector-tiles-LM25tq4", function(error, data) {
+              if (error) throw error;
+
+              g.selectAll("path")
+              .data(topojson.feature(data, data.objects.roads).features.sort(function(a, b) { return a.properties.sort_key - b.properties.sort_key; }))
+              .enter().append("path")
+              .attr("class", function(d) { return d.properties.kind; })
+              .attr("d", path);
+            });
+          });
+      }
+    });
+  }
+
+  update_date("20170304");
+  </script>
+  <embed src="density_legend.svg" width="1120" height="60" type="image/svg+xml" />
+</body>
