@@ -32,7 +32,7 @@ path {
   stroke: #ccc;
 }
 
-.year-title {
+.date-title {
   font-size: 1.5em;
 }
 
@@ -150,10 +150,10 @@ path {
                                 .enter().append("text")
                                 .text(function(d) { return d.toLocaleString("zh-Hans", {month: "long"}); });
 
-  var year_title = calender_panel.append("text")
-                              .attr("class", "year-title")
+  var date_title = calender_panel.append("text")
+                              .attr("class", "date-title")
                               .attr("y", 30)
-                              .text("2017年");
+                              .text("2017年2月23日");
 
   var legend_sos = calender_panel.append("g")
                                   .attr("transform", "translate(0, 600)")
@@ -203,7 +203,9 @@ path {
         .text(function(d) { return d3.timeFormat("%m月%d日")(d3.timeParse("%Y%m%d")(d)) + "的垃圾短信条数为:" + data[("$"+d)].toLocaleString(); });
 
     function clicked() {
-      update_date(d3.select(this).datum());
+      var d = d3.select(this).datum();
+      update_date(d);
+      date_title.text(d3.timeFormat("%Y年%m月%d日")(d3.timeParse("%Y%m%d")(d)));
     }
   });
 
@@ -239,7 +241,7 @@ path {
           .enter().append("g")
           .each(function(d) {
             var g = d3.select(this);
-            d3.json("https://vector.mapzen.com/osm/roads/" + d[2] + "/" + d[0] + "/" + d[1] + ".topojson?api_key=vector-tiles-LM25tq4", function(error, data) {
+            d3.json("https://tile.mapzen.com/mapzen/vector/v1/roads/" + d[2] + "/" + d[0] + "/" + d[1] + ".topojson?api_key=mapzen-7QxpagQ", function(error, data) {
               if (error) throw error;
 
               g.selectAll("path")
@@ -253,7 +255,7 @@ path {
     });
   }
 
-  update_date("20170304");
+  update_date("20170223");
   </script>
   <embed src="density_legend.svg" width="1120" height="60" type="image/svg+xml" />
 </body>
