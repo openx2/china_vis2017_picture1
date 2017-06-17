@@ -67,7 +67,10 @@ path {
   var first_load = true;
 
   //道路类型图例
-  var road_types = ['major_road', 'minor_road', 'highway', 'rail'];
+  var road_types = [{en:'major_road', zh:'主干道'},
+                    {en:'minor_road', zh:'支路'},
+                    {en:'highway',    zh:'高速公路'},
+                    {en:'rail',       zh:'铁路'}];
   var legend_roads = d3.select("body")
                         .append("svg")
                         .attr("width", 200)
@@ -80,7 +83,7 @@ path {
   legend_roads.selectAll('line')
               .data(road_types)
               .enter().append('line')
-              .attr('class', function(d) { return d; })
+              .attr('class', function(d) { return d.en; })
               .attr('x1', 0)
               .attr('y1', function(d, i) { return i*20 + 40; })
               .attr('x2', 50)
@@ -91,7 +94,9 @@ path {
               .enter().append('text')
               .attr('x', 70)
               .attr('y', function(d, i) { return i*20 + 45; })
-              .text(function(d) { return d; });
+              .style("cursor", "pointer")
+              .text(function(d) { return d.zh })
+              .on('click', set_road_display);
 
   legend_roads.append("text")
               .attr("class", "caption")
@@ -104,6 +109,52 @@ path {
                 .domain([1, 5, 25, 100, 250, 500, 1000, 2000])
                 .range(d3.schemeOrRd[9]);
 
+  var legend_x_width = [{x:0,   width:6},  {x:6,   width:13},  {x:19,  width:23},
+                        {x:42,  width:42}, {x:84,  width:49},  {x:133, width:56},
+                        {x:189, width:78}, {x:267, width:110}, {x:377, width:23},]
+
+  var density_legend = d3.select("body")
+                          .append("svg")
+                          .attr("width", 1120)
+                          .attr("height", 60)
+                          .style('left', '0')
+                          .style('top', '780px')
+                          .style('position', 'absolute')
+                        .append("g")
+                          .attr("transform", "translate(700,20)")
+                          .attr("font-size", 10)
+                          .attr("text-anchor", "middle")
+                          .attr("font-family", "sans-serif");
+
+  density_legend.selectAll("rect")
+                .data(legend_x_width)
+                .enter().append("rect")
+                .attr("x", function(d) { return d.x; })
+                .attr("width", function(d) { return d.width; })
+                .attr("height", 8)
+                .attr("fill", function(d, i) { return color.range()[i]; });
+  density_legend.append("text")
+                .attr("y", -6)
+                .attr("text-anchor", "start")
+                .attr("font-weight", "bold")
+                .attr("font-size", 12)
+                .text("区域内垃圾短信数量");
+  var tick_groups = density_legend.selectAll("g")
+                                  .data(legend_x_width.slice(1))
+                                  .enter().append("g")
+                                  .attr("transform", function(d) { return "translate(" + d.x + ",0)"});
+  tick_groups.append("line")
+             .attr("stroke", "black")
+             .attr("y2", 13)
+             .attr("x1", 0.5)
+             .attr("x2", 0.5);
+  tick_groups.append("text")
+             .attr("fill", "black")
+             .attr("y", 16)
+             .attr("x", 0.5)
+             .attr("dy", "0.71em")
+             .text(function(d, i) { return color.domain()[i]; });
+
   //每日垃圾短信严重程度
   var severity_of_spam_color = d3.scaleThreshold()
                                   .domain([20000,40000,60000])
@@ -111,10 +162,6 @@ path {
 
   //本日垃圾短信数目日历视图
   var cellSize = 25;
-
-  var severity_of_spam_color = d3.scaleThreshold()
-                                  .domain([20000,40000,60000])
-                                  .range(d3.schemeReds[4]);
 
   var calender_panel = d3.select("body")
                       .append("svg")
@@ -153,7 +200,8 @@ path {
   var date_title = calender_panel.append("text")
                               .attr("class", "date-title")
                               .attr("y", 30)
-                              .text("2017年2月23日");
+                              .text("2017年02月23日");
+  update_date("20170223");
 
   var legend_sos = calender_panel.append("g")
                                   .attr("transform", "translate(0, 600)")
@@ -209,6 +257,16 @@ path {
     }
   });
 
+  function set_road_display() {
+    //console.log(d3.select('.'+d3.select(this).datum().en).style('display'));
+    var road_type = '.'+d3.select(this).datum().en;
+    if(d3.select(road_type).style('display') == 'inline') {
+      d3.selectAll(road_type).style('display', 'none');
+    } else {
+      d3.selectAll(road_type).style('display', 'inline');
+    }
+  }
+
   function update_date(date_str) {
     d3.csv("data/" + date_str + "_density.csv", function(data) {
       var regions_of_density = svg.selectAll("rect")
@@ -241,7 +299,7 @@ path {
           .enter().append("g")
           .each(function(d) {
             var g = d3.select(this);
-            d3.json("https://tile.mapzen.com/mapzen/vector/v1/roads/" + d[2] + "/" + d[0] + "/" + d[1] + ".topojson?api_key=mapzen-7QxpagQ", function(error, data) {
+            d3.json("https://vector.mapzen.com/osm/roads/" + d[2] + "/" + d[0] + "/" + d[1] + ".topojson?api_key=vector-tiles-LM25tq4", function(error, data) {
               if (error) throw error;
 
               g.selectAll("path")
@@ -255,7 +313,5 @@ path {
     });
   }
 
-  update_date("20170223");
   </script>
-  <embed src="density_legend.svg" width="1120" height="60" type="image/svg+xml" />
 </body>
